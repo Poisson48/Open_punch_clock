@@ -2,11 +2,8 @@ import QtQuick
 import QtQuick.Controls
 
 // Menu qui s'élargit à son plus long libellé.
-//
-// Le Menu par défaut tire sa largeur de son contentItem (une ListView) qui ne mesure
-// pas tous ses délégués : les textes longs se retrouvent tronqués (« Tout remettre à
-// ach… »). On calcule donc la largeur sur le plus large des items.
 Menu {
+    parent: ApplicationWindow.window ? ApplicationWindow.window.contentItem : undefined
     implicitWidth: {
         let w = 0
         for (let i = 0; i < count; ++i) {

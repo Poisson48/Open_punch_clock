@@ -10,8 +10,6 @@ Item {
 
     property string selectedProjectId: AppController.projects.defaultProjectId()
 
-    function handleBack() { return false }
-
     function syncProjectBox() {
         const pid = root.selectedProjectId || AppController.projects.defaultProjectId()
         for (let i = 0; i < AppController.projects.count; ++i) {
@@ -37,7 +35,6 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
-        anchors.bottomMargin: Theme.pad + 32
         spacing: Theme.gap
 
         ComboBox {
@@ -130,39 +127,6 @@ Item {
             }
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: Theme.gap
-
-            Button {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Theme.touchTarget
-                text: qsTr("Historique")
-                onClicked: Navigation.push(historyPage)
-            }
-            Button {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Theme.touchTarget
-                text: qsTr("Projets")
-                onClicked: Navigation.push(projectsPage)
-            }
-            Button {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Theme.touchTarget
-                text: qsTr("Rapports")
-                onClicked: Navigation.push(reportsPage)
-            }
-            Button {
-                Layout.preferredWidth: Theme.touchTarget
-                Layout.preferredHeight: Theme.touchTarget
-                text: "⚙"
-                onClicked: Navigation.push(settingsPage)
-            }
-        }
+        Item { Layout.preferredHeight: Theme.pad }
     }
-
-    Component { id: historyPage; HistoryPage {} }
-    Component { id: projectsPage; ProjectsPage {} }
-    Component { id: reportsPage; ReportsPage {} }
-    Component { id: settingsPage; SettingsPage {} }
 }

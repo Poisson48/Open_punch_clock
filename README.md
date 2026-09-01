@@ -3,14 +3,14 @@
 Alternative **open source** (GPLv3) à [Time Squared / Time Clock: Easy Tracker](https://play.google.com/store/apps/details?id=co.timesquared.timetracker) — pointeuse et feuille de temps, sans pub ni abonnement.
 
 **Plateformes :** Linux (AppImage) · Android (APK arm64)  
-**Version actuelle :** [v0.1.5](https://github.com/Poisson48/Open_punch_clock/releases/tag/v0.1.5)
+**Version actuelle :** [v0.1.6](https://github.com/Poisson48/Open_punch_clock/releases/tag/v0.1.6)
 
 ## Téléchargement
 
 | Plateforme | Fichier |
 |---|---|
-| Android | [`openpunchclock-v0.1.5-arm64.apk`](https://github.com/Poisson48/Open_punch_clock/releases/download/v0.1.5/openpunchclock-v0.1.5-arm64.apk) |
-| Linux | [`OpenPunchClock-0.1.5-x86_64.AppImage`](https://github.com/Poisson48/Open_punch_clock/releases/download/v0.1.5/OpenPunchClock-0.1.5-x86_64.AppImage) |
+| Android | [`openpunchclock-v0.1.6-arm64.apk`](https://github.com/Poisson48/Open_punch_clock/releases/download/v0.1.6/openpunchclock-v0.1.6-arm64.apk) |
+| Linux | [`OpenPunchClock-0.1.6-x86_64.AppImage`](https://github.com/Poisson48/Open_punch_clock/releases/download/v0.1.6/OpenPunchClock-0.1.6-x86_64.AppImage) |
 
 Mises à jour automatiques (hors Play Store) via [colo-apps](https://colo-apps.les-crevettes-cevenoles.fr/releases/open-punch-clock-manifest.json).
 

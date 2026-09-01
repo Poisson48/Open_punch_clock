@@ -73,7 +73,6 @@ set(PUNCH_QML_FILES
     qml/TimeCardEditor.qml
     qml/SettingsPage.qml
     qml/ReportsPage.qml
-    qml/Navigation.qml
     qml/TimeUtils.qml
     qml/ColoDialog.qml
     qml/ColoMenu.qml
@@ -85,7 +84,6 @@ set(PUNCH_QML_FILES
 )
 
 set_source_files_properties(qml/TimeUtils.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
-set_source_files_properties(qml/Navigation.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_qml_module(openpunchclock
     URI OpenPunchClock
@@ -137,8 +135,8 @@ set_property(TARGET openpunchclock PROPERTY
     QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/android")
 set_property(TARGET openpunchclock PROPERTY QT_ANDROID_TARGET_SDK_VERSION 34)
 
-set(PUNCH_VERSION_NAME "0.1.5" CACHE STRING "android:versionName")
-set(PUNCH_VERSION_CODE "6" CACHE STRING "android:versionCode")
+set(PUNCH_VERSION_NAME "0.1.6" CACHE STRING "android:versionName")
+set(PUNCH_VERSION_CODE "7" CACHE STRING "android:versionCode")
 set_property(TARGET openpunchclock PROPERTY QT_ANDROID_VERSION_NAME "${PUNCH_VERSION_NAME}")
 set_property(TARGET openpunchclock PROPERTY QT_ANDROID_VERSION_CODE "${PUNCH_VERSION_CODE}")
 target_compile_definitions(applib PUBLIC PUNCH_APP_VERSION="${PUNCH_VERSION_NAME}")

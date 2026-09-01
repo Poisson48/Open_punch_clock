@@ -8,52 +8,53 @@ Item {
     id: root
     readonly property string pageTitle: qsTr("Projets")
 
-    property Component actions: Row {
-        ToolButton {
-            width: Theme.touchTarget
-            height: Theme.touchTarget
-            text: "+"
-            font.pixelSize: 22
-            onClicked: createDialog.open()
-        }
-    }
-
-    ListView {
+    ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
         spacing: Theme.gap
-        clip: true
-        model: AppController.projects
 
-        delegate: Rectangle {
-            width: ListView.view.width
-            height: 64
-            radius: Theme.radius
-            color: Theme.surface
-            border.color: Theme.outline
+        Button {
+            Layout.fillWidth: true
+            Layout.preferredHeight: Theme.touchTarget
+            text: qsTr("+ Nouveau projet")
+            Material.background: Theme.accent
+            Material.foreground: Theme.onAccent
+            onClicked: createDialog.open()
+        }
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: Theme.gap
-                Rectangle {
-                    Layout.preferredWidth: 12
-                    Layout.preferredHeight: 12
-                    radius: 6
-                    color: model.color || Theme.accent
-                }
-                Label {
-                    Layout.fillWidth: true
-                    text: model.name + (model.isDefault ? " ★" : "")
-                    color: Theme.text
-                }
-                Label {
-                    text: model.hourlyRate.toFixed(2) + " €/h"
-                    color: Theme.textDim
-                }
-            }
+        ListView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: Theme.gap
+            clip: true
+            model: AppController.projects
 
-            MouseArea {
-                anchors.fill: parent
+            delegate: ItemDelegate {
+                width: ListView.view.width
+                height: 64
+                background: Rectangle {
+                    radius: Theme.radius
+                    color: Theme.surface
+                    border.color: Theme.outline
+                }
+                contentItem: RowLayout {
+                    spacing: Theme.gap
+                    Rectangle {
+                        Layout.preferredWidth: 12
+                        Layout.preferredHeight: 12
+                        radius: 6
+                        color: model.color || Theme.accent
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        text: model.name + (model.isDefault ? " ★" : "")
+                        color: Theme.text
+                    }
+                    Label {
+                        text: model.hourlyRate.toFixed(2) + " €/h"
+                        color: Theme.textDim
+                    }
+                }
                 onClicked: editDialog.openFor(model.projectId, model.name,
                                               model.hourlyRate, model.color, model.isDefault)
             }
@@ -86,6 +87,7 @@ Item {
             ColoTextField { id: editRate; Layout.fillWidth: true }
             Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: Theme.touchTarget
                 text: qsTr("Définir par défaut")
                 visible: !editDialog.isDefault
                 onClicked: {
@@ -95,6 +97,7 @@ Item {
             }
             Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: Theme.touchTarget
                 text: qsTr("Supprimer le projet")
                 Material.foreground: Theme.danger
                 onClicked: deleteConfirm.open()
@@ -116,7 +119,6 @@ Item {
         title: qsTr("Supprimer ce projet ?")
         destructive: true
         acceptText: qsTr("Supprimer")
-        showCancel: true
         onAccepted: {
             if (AppController.projects.deleteProject(editDialog.pid)) {
                 AppController.showToast(qsTr("Projet supprimé"))

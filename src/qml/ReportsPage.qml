@@ -19,35 +19,6 @@ Item {
         byProject = AppController.weekReportByProject()
     }
 
-    property Component actions: Row {
-        ToolButton {
-            width: Theme.touchTarget
-            height: Theme.touchTarget
-            text: "↓"
-            onClicked: exportMenu.popup()
-        }
-    }
-
-    ColoMenu {
-        id: exportMenu
-        MenuItem {
-            text: qsTr("Partager CSV (semaine)")
-            onTriggered: shareOrToast(AppController.shareCsvWeek())
-        }
-        MenuItem {
-            text: qsTr("Partager XLSX (semaine)")
-            onTriggered: shareOrToast(AppController.shareXlsxWeek())
-        }
-        MenuItem {
-            text: qsTr("Partager CSV (mois)")
-            onTriggered: shareOrToast(AppController.shareCsvMonth())
-        }
-        MenuItem {
-            text: qsTr("Partager XLSX (mois)")
-            onTriggered: shareOrToast(AppController.shareXlsxMonth())
-        }
-    }
-
     function shareOrToast(ok) {
         AppController.showToast(ok ? qsTr("Partage ouvert") : qsTr("Export impossible"))
     }
@@ -57,8 +28,8 @@ Item {
         clip: true
 
         ColumnLayout {
-            width: root.width
-            anchors.margins: Theme.pad
+            width: root.width - Theme.pad * 2
+            x: Theme.pad
             spacing: Theme.gap
 
             GroupBox {
@@ -94,6 +65,33 @@ Item {
                 }
             }
 
+            Label { text: qsTr("Exporter et partager"); color: Theme.textDim; Layout.fillWidth: true }
+
+            Button {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Theme.touchTarget
+                text: qsTr("CSV — semaine")
+                onClicked: shareOrToast(AppController.shareCsvWeek())
+            }
+            Button {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Theme.touchTarget
+                text: qsTr("XLSX — semaine")
+                onClicked: shareOrToast(AppController.shareXlsxWeek())
+            }
+            Button {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Theme.touchTarget
+                text: qsTr("CSV — mois")
+                onClicked: shareOrToast(AppController.shareCsvMonth())
+            }
+            Button {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Theme.touchTarget
+                text: qsTr("XLSX — mois")
+                onClicked: shareOrToast(AppController.shareXlsxMonth())
+            }
+
             Button {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Theme.touchTarget
@@ -101,7 +99,7 @@ Item {
                 onClicked: refresh()
             }
 
-            Item { Layout.preferredHeight: Theme.pad + 40 }
+            Item { Layout.preferredHeight: Theme.pad }
         }
     }
 }
