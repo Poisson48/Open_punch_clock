@@ -176,7 +176,7 @@ public class PushService extends Service {
                         if (title.isEmpty())
                             title = "Sync";
                         Platform.showNotification(PushService.this, title,
-                                "Modifications reçues");
+                                "Modifications reçues", now);
                     }
                 } catch (Exception e) {
                     sleep(8000);
