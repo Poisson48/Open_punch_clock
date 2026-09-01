@@ -63,7 +63,34 @@ Item {
         Switch {
             text: qsTr("GPS au punch (opt-in)")
             checked: AppController.gpsEnabled
-            onToggled: AppController.setGpsEnabled(checked)
+            onToggled: {
+                if (checked)
+                    Permissions.requestLocation()
+                AppController.setGpsEnabled(checked)
+            }
+        }
+
+        GroupBox {
+            Layout.fillWidth: true
+            title: qsTr("Sauvegarde chiffrée")
+            ColumnLayout {
+                width: parent.width
+                ColoTextField {
+                    id: backupPass
+                    Layout.fillWidth: true
+                    placeholderText: qsTr("Phrase secrète")
+                    echoMode: TextInput.Password
+                }
+                Button {
+                    Layout.fillWidth: true
+                    text: qsTr("Exporter la sauvegarde")
+                    onClicked: {
+                        const path = AppController.suggestedBackupPath()
+                        if (AppController.exportBackup(path, backupPass.text))
+                            console.log("Backup:", path)
+                    }
+                }
+            }
         }
 
         GroupBox {
@@ -86,7 +113,7 @@ Item {
                     onClicked: {
                         const uri = AppController.syncJoinUri()
                         if (uri.length > 0)
-                            console.log("Join URI:", uri)
+                            AppController.copyToClipboard(uri)
                     }
                 }
             }
@@ -94,7 +121,7 @@ Item {
 
         Label {
             Layout.fillWidth: true
-            text: qsTr("Open Punch Clock v0.1.3 — GPLv3")
+            text: qsTr("Open Punch Clock v%1 — GPLv3").arg(AppController.appVersion)
             color: Theme.textDim
             font.pixelSize: 12
         }

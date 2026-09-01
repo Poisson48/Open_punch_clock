@@ -4,7 +4,7 @@
 
 namespace app {
 
-// Pont vers les services natifs (Android : org.colocourse.app.Platform via JNI).
+// Pont vers les services natifs (Android : org.openpunchclock.app.Platform via JNI).
 // Chaque fonction est un no-op renvoyant false hors Android, l'appelant fournit
 // alors un repli desktop.
 
@@ -18,6 +18,19 @@ bool platformNotify(const QString& title, const QString& body, qint64 whenMs = 0
 
 // Feuille de partage native (ACTION_SEND). false → l'appelant copie le texte.
 bool platformShare(const QString& text);
+
+// Partage d'un fichier (ACTION_SEND + FileProvider). false → repli desktop.
+bool platformShareFile(const QString& path, const QString& mimeType);
+
+// Presse-papier système.
+bool platformSetClipboard(const QString& text);
+
+// Met à jour le widget Android (no-op hors Android).
+void platformUpdateWidget(bool clockedIn, bool onBreak,
+                           const QString& timerText, const QString& statusText);
+
+// Action widget au lancement : "in", "out" ou vide.
+QString platformConsumeLaunchPunchAction();
 
 // Installe un APK déjà téléchargé (PackageInstaller). Android affiche sa propre
 // demande de confirmation ; l'app n'installe rien dans le dos de l'utilisateur.

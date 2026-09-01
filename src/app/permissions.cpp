@@ -12,9 +12,17 @@ Permissions::Permissions(QObject* parent)
     : QObject(parent)
 {
 #if QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
-    // Pas d'API de permissions : rien à demander (Linux desktop).
     m_cameraGranted = true;
+    m_locationGranted = true;
 #endif
+}
+
+void Permissions::setLocationGranted(bool granted)
+{
+    if (m_locationGranted == granted)
+        return;
+    m_locationGranted = granted;
+    emit locationGrantedChanged();
 }
 
 void Permissions::setCameraGranted(bool granted)
@@ -46,6 +54,30 @@ void Permissions::requestCamera()
     }
 #else
     setCameraGranted(true);
+#endif
+}
+
+void Permissions::requestLocation()
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    const QLocationPermission permission;
+    permission.setAccuracy(QLocationPermission::Precise);
+
+    switch (qApp->checkPermission(permission)) {
+    case Qt::PermissionStatus::Granted:
+        setLocationGranted(true);
+        return;
+    case Qt::PermissionStatus::Denied:
+        setLocationGranted(false);
+        return;
+    case Qt::PermissionStatus::Undetermined:
+        qApp->requestPermission(permission, this, [this](const QPermission& result) {
+            setLocationGranted(result.status() == Qt::PermissionStatus::Granted);
+        });
+        return;
+    }
+#else
+    setLocationGranted(true);
 #endif
 }
 

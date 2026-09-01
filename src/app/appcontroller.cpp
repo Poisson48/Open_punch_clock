@@ -2,9 +2,11 @@
 #include "i18n.h"
 #include "syncengine.h"
 
+#include "../core/backup.h"
 #include "../core/csv.h"
 #include "../core/timecalculator.h"
 #include "../core/xlsx.h"
+#include "../core/zip.h"
 #include "../net/relaypool.h"
 #include "platform.h"
 
@@ -90,6 +92,7 @@ bool AppController::init()
     });
 
     emit settingsChanged();
+    refreshWidget();
     return true;
 }
 
@@ -138,6 +141,43 @@ double AppController::overtimeThreshold() const { return m_overtimeThreshold; }
 bool AppController::gpsEnabled() const { return m_gpsEnabled; }
 bool AppController::syncEnabled() const { return !m_db.getWorkspaces().empty(); }
 
+QString AppController::appVersion() const
+{
+#ifndef PUNCH_APP_VERSION
+    return QStringLiteral("0.0.0");
+#else
+    return QStringLiteral(PUNCH_APP_VERSION);
+#endif
+}
+
+QString AppController::formatDuration(qint64 ms) const
+{
+    if (ms <= 0)
+        return QStringLiteral("00:00:00");
+    const qint64 s = ms / 1000;
+    const qint64 h = s / 3600;
+    const qint64 m = (s % 3600) / 60;
+    const qint64 sec = s % 60;
+    return QStringLiteral("%1:%2:%3")
+        .arg(h, 2, 10, QChar('0'))
+        .arg(m, 2, 10, QChar('0'))
+        .arg(sec, 2, 10, QChar('0'));
+}
+
+void AppController::refreshWidget()
+{
+    const qint64 elapsed = liveElapsedMs() - liveBreakMs();
+    QString status;
+    if (onBreak())
+        status = tr("En pause");
+    else if (clockedIn())
+        status = tr("En service");
+    else
+        status = tr("Prêt à pointer");
+
+    platformUpdateWidget(clockedIn(), onBreak(), formatDuration(elapsed), status);
+}
+
 void AppController::captureGps(double* lat, double* lon)
 {
     *lat = *lon = 0.0;
@@ -165,9 +205,11 @@ bool AppController::punchIn(const QString& projectId)
     if (!m_punch.clockIn(projectId.toStdString(), lat, lon))
         return false;
     m_tickTimer.start();
+    platformVibrate(40);
     if (m_sync)
         m_sync->onLocalChange();
     emit punchChanged();
+    refreshWidget();
     return true;
 }
 
@@ -179,9 +221,11 @@ bool AppController::punchOut()
         return false;
     m_tickTimer.stop();
     m_entries.reload();
+    platformVibrate(60);
     if (m_sync)
         m_sync->onLocalChange();
     emit punchChanged();
+    refreshWidget();
     return true;
 }
 
@@ -190,6 +234,7 @@ bool AppController::startBreak()
     if (!m_punch.startBreak())
         return false;
     emit punchChanged();
+    refreshWidget();
     return true;
 }
 
@@ -198,6 +243,7 @@ bool AppController::endBreak()
     if (!m_punch.endBreak())
         return false;
     emit punchChanged();
+    refreshWidget();
     return true;
 }
 
@@ -249,6 +295,7 @@ void AppController::setLocale(const QString& code)
 void AppController::onTick()
 {
     emit tick();
+    refreshWidget();
 }
 
 void AppController::checkReminder()
@@ -329,11 +376,120 @@ bool AppController::writeXlsxFile(const QString& path, qint64 fromMs, qint64 toM
 
 QString AppController::suggestedExportPath(const QString& ext) const
 {
-    const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
     const QString name = QStringLiteral("timesheet_")
         + QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmm"))
         + QLatin1Char('.') + ext;
     return dir + QLatin1Char('/') + name;
+}
+
+bool AppController::shareCsvWeek()
+{
+    const auto w = weekReport();
+    const QString path = suggestedExportPath(QStringLiteral("csv"));
+    if (!writeCsvFile(path, w.value(QStringLiteral("fromMs")).toLongLong(),
+                      w.value(QStringLiteral("toMs")).toLongLong()))
+        return false;
+    return platformShareFile(path, QStringLiteral("text/csv"));
+}
+
+bool AppController::shareXlsxWeek()
+{
+    const auto w = weekReport();
+    const QString path = suggestedExportPath(QStringLiteral("xlsx"));
+    if (!writeXlsxFile(path, w.value(QStringLiteral("fromMs")).toLongLong(),
+                       w.value(QStringLiteral("toMs")).toLongLong()))
+        return false;
+    return platformShareFile(path,
+        QStringLiteral("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+}
+
+bool AppController::exportBackup(const QString& path, const QString& passphrase)
+{
+    if (passphrase.trimmed().isEmpty())
+        return false;
+
+    const auto blob = core::backupEncrypt(databasePath().toStdString(),
+                                          passphrase.toStdString());
+    if (!blob)
+        return false;
+
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly))
+        return false;
+    f.write(reinterpret_cast<const char*>(blob->data()),
+            static_cast<qint64>(blob->size()));
+    return true;
+}
+
+bool AppController::importBackup(const QString& path, const QString& passphrase)
+{
+    if (passphrase.trimmed().isEmpty())
+        return false;
+
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        return false;
+    const QByteArray raw = f.readAll();
+    const std::vector<uint8_t> blob(raw.begin(), raw.end());
+
+    const auto zipOpt = core::backupDecryptToZip(blob, passphrase.toStdString());
+    if (!zipOpt)
+        return false;
+
+    const auto entries = core::zipRead(*zipOpt);
+    if (!entries)
+        return false;
+
+    std::string dbBytes;
+    for (const auto& e : *entries) {
+        if (e.name == "openpunchclock.db")
+            dbBytes = e.data;
+    }
+    if (dbBytes.empty())
+        return false;
+
+    shutdown();
+    const QString dbPath = databasePath();
+    QFile::remove(dbPath);
+    QFile out(dbPath);
+    if (!out.open(QIODevice::WriteOnly))
+        return false;
+    out.write(dbBytes.data(), static_cast<qint64>(dbBytes.size()));
+    out.close();
+
+    if (!init())
+        return false;
+
+    emit punchChanged();
+    refreshWidget();
+    return true;
+}
+
+void AppController::processLaunchIntent()
+{
+    const QString action = platformConsumeLaunchPunchAction();
+    if (action == QLatin1String("in")) {
+        const QString pid = m_projects.defaultProjectId();
+        if (!pid.isEmpty())
+            punchIn(pid);
+    } else if (action == QLatin1String("out")) {
+        punchOut();
+    }
+}
+
+QString AppController::suggestedBackupPath() const
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString name = QStringLiteral("openpunchclock_backup_")
+        + QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmm"))
+        + QStringLiteral(".opcbk");
+    return dir + QLatin1Char('/') + name;
+}
+
+bool AppController::copyToClipboard(const QString& text)
+{
+    return platformSetClipboard(text);
 }
 
 QVariantMap AppController::weekReport()

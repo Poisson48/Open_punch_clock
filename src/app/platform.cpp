@@ -12,7 +12,7 @@ namespace app {
 
 namespace {
 
-constexpr const char* kPlatformClass = "org/colocourse/app/Platform";
+constexpr const char* kPlatformClass = "org/openpunchclock/app/Platform";
 
 // context() renvoie l'Activity quand l'app tourne au premier plan. Son type de
 // retour a changé entre versions de Qt (QJniObject → jobject) : l'init par
@@ -68,6 +68,61 @@ bool platformShare(const QString& text)
         kPlatformClass, "shareText",
         "(Landroid/content/Context;Ljava/lang/String;)Z",
         ctx.object(), jText.object<jstring>());
+}
+
+bool platformShareFile(const QString& path, const QString& mimeType)
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+
+    const QJniObject jPath = QJniObject::fromString(path);
+    const QJniObject jMime = QJniObject::fromString(mimeType);
+    return QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "shareFile",
+        "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Z",
+        ctx.object(), jPath.object<jstring>(), jMime.object<jstring>());
+}
+
+bool platformSetClipboard(const QString& text)
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return false;
+
+    const QJniObject jText = QJniObject::fromString(text);
+    return QJniObject::callStaticMethod<jboolean>(
+        kPlatformClass, "setClipboard",
+        "(Landroid/content/Context;Ljava/lang/String;)Z",
+        ctx.object(), jText.object<jstring>());
+}
+
+void platformUpdateWidget(bool clockedIn, bool onBreak,
+                          const QString& timerText, const QString& statusText)
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return;
+
+    const QJniObject jTimer = QJniObject::fromString(timerText);
+    const QJniObject jStatus = QJniObject::fromString(statusText);
+    QJniObject::callStaticMethod<void>(
+        kPlatformClass, "updateWidget",
+        "(Landroid/content/Context;ZZLjava/lang/String;Ljava/lang/String;)V",
+        ctx.object(), static_cast<jboolean>(clockedIn), static_cast<jboolean>(onBreak),
+        jTimer.object<jstring>(), jStatus.object<jstring>());
+}
+
+QString platformConsumeLaunchPunchAction()
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return {};
+
+    const QJniObject result = QJniObject::callStaticObjectMethod(
+        kPlatformClass, "consumeLaunchPunchAction",
+        "(Landroid/content/Context;)Ljava/lang/String;", ctx.object());
+    return result.isValid() ? result.toString() : QString{};
 }
 
 bool platformInstallApk(const QString& apkPath)
@@ -136,6 +191,14 @@ void initNotifications() {}
 bool platformNotify(const QString&, const QString&, qint64) { return false; }
 
 bool platformShare(const QString&) { return false; }
+
+bool platformShareFile(const QString&, const QString&) { return false; }
+
+bool platformSetClipboard(const QString&) { return false; }
+
+void platformUpdateWidget(bool, bool, const QString&, const QString&) {}
+
+QString platformConsumeLaunchPunchAction() { return {}; }
 
 bool platformInstallApk(const QString&) { return false; }
 

@@ -36,6 +36,7 @@ class AppController : public QObject
     Q_PROPERTY(bool syncEnabled READ syncEnabled NOTIFY settingsChanged)
     Q_PROPERTY(QString locale READ locale WRITE setLocale NOTIFY localeChanged)
     Q_PROPERTY(QVariantList availableLocales READ availableLocales CONSTANT)
+    Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
 
     Q_PROPERTY(ProjectModel* projects READ projects CONSTANT)
     Q_PROPERTY(TimeEntryModel* entries READ entries CONSTANT)
@@ -65,6 +66,7 @@ public:
     bool syncEnabled() const;
     QString locale() const { return m_locale; }
     QVariantList availableLocales() const;
+    QString appVersion() const;
 
     ProjectModel* projects() { return &m_projects; }
     TimeEntryModel* entries() { return &m_entries; }
@@ -85,6 +87,18 @@ public:
     Q_INVOKABLE bool writeXlsxFile(const QString& path, qint64 fromMs, qint64 toMs);
 
     Q_INVOKABLE QString suggestedExportPath(const QString& ext) const;
+
+    Q_INVOKABLE bool shareCsvWeek();
+    Q_INVOKABLE bool shareXlsxWeek();
+
+    Q_INVOKABLE bool exportBackup(const QString& path, const QString& passphrase);
+    Q_INVOKABLE bool importBackup(const QString& path, const QString& passphrase);
+
+    Q_INVOKABLE QString suggestedBackupPath() const;
+
+    Q_INVOKABLE void processLaunchIntent();
+
+    Q_INVOKABLE bool copyToClipboard(const QString& text);
 
     Q_INVOKABLE QVariantMap weekReport();
     Q_INVOKABLE QVariantMap monthReport();
@@ -115,6 +129,8 @@ private slots:
 
 private:
     void captureGps(double* lat, double* lon);
+    void refreshWidget();
+    QString formatDuration(qint64 ms) const;
     std::vector<std::vector<std::string>> buildExportRows(qint64 fromMs, qint64 toMs) const;
 
     store::Database  m_db;

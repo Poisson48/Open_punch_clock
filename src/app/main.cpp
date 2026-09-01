@@ -4,6 +4,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QTimer>
 #include <QTranslator>
 
 #include "appcontroller.h"
@@ -73,5 +74,8 @@ int main(int argc, char *argv[])
     }, Qt::QueuedConnection);
 
     engine.load(url);
+
+    QTimer::singleShot(0, &controller, &app::AppController::processLaunchIntent);
+
     return app.exec();
 }

@@ -72,7 +72,7 @@ jobs:
           python3 -m aqt install-qt linux desktop "$QT_VER" linux_gcc_64 \
             -m qtwebsockets -O "$HOME/Qt"
           python3 -m aqt install-qt linux android "$QT_VER" android_arm64_v8a \
-            -m qtwebsockets -O "$HOME/Qt"
+            -m qtwebsockets -m qtpositioning -O "$HOME/Qt"
 
       - name: Cache libs arm64
         id: cache-libs

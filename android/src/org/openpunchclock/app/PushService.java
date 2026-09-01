@@ -1,4 +1,4 @@
-package org.colocourse.app;
+package org.openpunchclock.app;
 
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -22,10 +22,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-// Veille ntfy uniquement en arrière-plan (C++ arrête le service au premier plan).
 public class PushService extends Service {
 
-    private static final String PREFS = "colocourse_push";
+    private static final String PREFS = "openpunchclock_push";
     private static final int FG_ID = 4546;
     private static final long NOTIFY_COOLDOWN_MS = 60_000L;
 
@@ -55,7 +54,7 @@ public class PushService extends Service {
             else
                 ctx.startService(intent);
         } catch (Exception e) {
-            // Android 12+ : impossible de lancer un FGS si l'app n'est pas au premier plan.
+            // background start blocked
         }
     }
 
@@ -73,12 +72,12 @@ public class PushService extends Service {
 
         Platform.createChannel(this);
         final CharSequence label = getApplicationInfo().loadLabel(getPackageManager());
-        final String appName = label != null ? label.toString() : "Colo Course";
+        final String appName = label != null ? label.toString() : "Time Clock";
 
         Notification.Builder builder = new Notification.Builder(this, Platform.CHANNEL_VEILLE_ID)
                 .setSmallIcon(smallIcon())
                 .setContentTitle(appName)
-                .setContentText("Alertes listes partagées")
+                .setContentText("Sync en arrière-plan")
                 .setOngoing(true)
                 .setShowWhen(false)
                 .setCategory(Notification.CATEGORY_SERVICE);
@@ -97,7 +96,6 @@ public class PushService extends Service {
         try {
             startForeground(FG_ID, builder.build());
         } catch (RuntimeException e) {
-            // Android 14+ : notification invalide (canal MIN, texte vide…) → ne pas crasher.
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -108,7 +106,7 @@ public class PushService extends Service {
         }
 
         running = true;
-        worker = new Thread(() -> pollLoop(baseUrl, topics), "ColoPush");
+        worker = new Thread(() -> pollLoop(baseUrl, topics), "OpenPunchPush");
         worker.start();
         return START_STICKY;
     }
@@ -176,9 +174,9 @@ public class PushService extends Service {
 
                         String title = msg.optString("title", "");
                         if (title.isEmpty())
-                            title = "Liste mise à jour";
+                            title = "Sync";
                         Platform.showNotification(PushService.this, title,
-                                "Modifications reçues — ouvrez l'app pour voir le détail");
+                                "Modifications reçues");
                     }
                 } catch (Exception e) {
                     sleep(8000);

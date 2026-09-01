@@ -28,18 +28,12 @@ Item {
     ColoMenu {
         id: exportMenu
         MenuItem {
-            text: qsTr("Export CSV (semaine)")
-            onTriggered: {
-                const path = AppController.suggestedExportPath("csv")
-                AppController.writeCsvFile(path, week.fromMs, week.toMs)
-            }
+            text: qsTr("Partager CSV (semaine)")
+            onTriggered: AppController.shareCsvWeek()
         }
         MenuItem {
-            text: qsTr("Export XLSX (semaine)")
-            onTriggered: {
-                const path = AppController.suggestedExportPath("xlsx")
-                AppController.writeXlsxFile(path, week.fromMs, week.toMs)
-            }
+            text: qsTr("Partager XLSX (semaine)")
+            onTriggered: AppController.shareXlsxWeek()
         }
     }
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Time Clock</string>
+    <string name="widget_description">Pointage rapide sans ouvrir l\'app</string>
+    <string name="widget_status_ready">Prêt à pointer</string>
+    <string name="widget_status_working">En service</string>
+    <string name="widget_status_break">En pause</string>
+    <string name="widget_punch_in">PUNCH IN</string>
+    <string name="widget_punch_out">PUNCH OUT</string>
+</resources>

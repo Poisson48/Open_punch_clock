@@ -13,22 +13,27 @@ class Permissions : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(bool cameraGranted READ cameraGranted NOTIFY cameraGrantedChanged)
+    Q_PROPERTY(bool locationGranted READ locationGranted NOTIFY locationGrantedChanged)
 
 public:
     explicit Permissions(QObject* parent = nullptr);
 
     bool cameraGranted() const { return m_cameraGranted; }
+    bool locationGranted() const { return m_locationGranted; }
 
-    // Demande la permission caméra si elle n'est pas encore tranchée.
     Q_INVOKABLE void requestCamera();
+    Q_INVOKABLE void requestLocation();
 
 signals:
     void cameraGrantedChanged();
+    void locationGrantedChanged();
 
 private:
     void setCameraGranted(bool granted);
+    void setLocationGranted(bool granted);
 
     bool m_cameraGranted = false;
+    bool m_locationGranted = false;
 };
 
 } // namespace app

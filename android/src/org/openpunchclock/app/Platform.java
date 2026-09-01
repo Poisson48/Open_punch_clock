@@ -1,4 +1,4 @@
-package org.colocourse.app;
+package org.openpunchclock.app;
 
 import android.app.Activity;
 import android.app.Notification;
@@ -6,32 +6,36 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
 import android.view.WindowManager;
 
+import androidx.core.content.FileProvider;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-// Services natifs appelés depuis C++ via JNI (src/app/platform.cpp) : notification
-// locale après un merge distant (SPEC §8) et feuille de partage du lien d'appairage.
-// Aucune référence à la classe R générée : les ressources sont résolues par nom,
-// pour ne dépendre d'aucun namespace Gradle.
 public class Platform {
 
-    public static final String CHANNEL_ID = "colocourse.sync";
-    // v3 : IMPORTANCE_LOW requis pour startForeground (Android 14+ interdit MIN).
-    public static final String CHANNEL_VEILLE_ID = "colocourse.veille.v3";
-    private static final int    NOTIFICATION_ID = 4545;
-    private static final int    PERMISSION_REQUEST = 4545;
+    public static final String CHANNEL_ID = "openpunchclock.sync";
+    public static final String CHANNEL_VEILLE_ID = "openpunchclock.veille";
+    private static final int NOTIFICATION_ID = 4545;
+    private static final int PERMISSION_REQUEST = 4545;
+
+    public static final String PREF_WIDGET = "openpunchclock_widget";
+    public static final String EXTRA_PUNCH_ACTION = "punch_action";
 
     public static void createChannel(Context ctx) {
         if (ctx == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
@@ -42,16 +46,16 @@ public class Platform {
 
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID, "Synchronisation", NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription("Changements reçus sur vos listes");
+                    CHANNEL_ID, "Time Clock", NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setDescription("Rappels et synchronisation");
             nm.createNotificationChannel(channel);
         }
 
         if (nm.getNotificationChannel(CHANNEL_VEILLE_ID) == null) {
             NotificationChannel veille = new NotificationChannel(
-                    CHANNEL_VEILLE_ID, "Veille listes",
+                    CHANNEL_VEILLE_ID, "Veille sync",
                     NotificationManager.IMPORTANCE_LOW);
-            veille.setDescription("Alertes discrètes quand l'app est en arrière-plan");
+            veille.setDescription("Sync en arrière-plan");
             veille.setShowBadge(false);
             veille.enableLights(false);
             veille.enableVibration(false);
@@ -60,8 +64,6 @@ public class Platform {
         }
     }
 
-    // Android 13+ : POST_NOTIFICATIONS est une permission runtime. Sans activité
-    // (cas d'un service), on ne peut pas la demander : on sort silencieusement.
     public static void requestPermission(Context ctx) {
         if (!(ctx instanceof Activity) || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
             return;
@@ -74,20 +76,12 @@ public class Platform {
         }
     }
 
-    public static void showNotification(Context ctx, String title, String body) {
-        showNotification(ctx, title, body, 0L);
-    }
-
-    // ntfy : démarre ou arrête la veille push (topics = colo-{channelTag}).
     public static void configurePush(Context ctx, String baseUrl, String[] topics,
                                      String deviceId) {
         PushService.configure(ctx, baseUrl, topics, deviceId);
     }
 
-    // whenMs > 0 : horodatage de la notification = heure de la modification
-    // (pas l'heure de réception). setShowWhen(true) pour l'afficher dans le tiroir.
-    public static void showNotification(Context ctx, String title, String body,
-                                        long whenMs) {
+    public static void showNotification(Context ctx, String title, String body, long whenMs) {
         if (ctx == null)
             return;
         createChannel(ctx);
@@ -107,7 +101,6 @@ public class Platform {
             builder.setShowWhen(true);
         }
 
-        // Tap sur la notif → ouvre l'app.
         Intent open = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
         if (open != null) {
             open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -119,7 +112,6 @@ public class Platform {
         nm.notify(NOTIFICATION_ID, builder.build());
     }
 
-    // Feuille de partage native : le lien d'appairage part dans WhatsApp, SMS, mail…
     public static boolean shareText(Context ctx, String text) {
         if (ctx == null)
             return false;
@@ -127,8 +119,7 @@ public class Platform {
             Intent send = new Intent(Intent.ACTION_SEND);
             send.setType("text/plain");
             send.putExtra(Intent.EXTRA_TEXT, text);
-            Intent chooser = Intent.createChooser(send, "Partager la liste");
-            // Hors d'une Activity, le chooser exige sa propre tâche.
+            Intent chooser = Intent.createChooser(send, "Partager");
             chooser.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             ctx.startActivity(chooser);
             return true;
@@ -137,12 +128,70 @@ public class Platform {
         }
     }
 
-    // --- Mise à jour depuis l'app ---
-    //
-    // PackageInstaller plutôt qu'un Intent ACTION_VIEW sur un content:// : celui-ci
-    // imposerait un FileProvider (donc une dépendance androidx et une autorité
-    // déclarée). Ici on écrit l'APK dans une session d'installation, et Android
-    // affiche lui-même sa demande de confirmation — rien ne s'installe en douce.
+    public static boolean shareFile(Context ctx, String path, String mimeType) {
+        if (ctx == null || path == null)
+            return false;
+        try {
+            File file = new File(path);
+            if (!file.isFile())
+                return false;
+            Uri uri = FileProvider.getUriForFile(ctx,
+                    "org.openpunchclock.app.fileprovider", file);
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType(mimeType != null && !mimeType.isEmpty() ? mimeType : "*/*");
+            send.putExtra(Intent.EXTRA_STREAM, uri);
+            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Intent chooser = Intent.createChooser(send, "Partager");
+            chooser.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(chooser);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean setClipboard(Context ctx, String text) {
+        if (ctx == null)
+            return false;
+        try {
+            ClipboardManager cm = ctx.getSystemService(ClipboardManager.class);
+            if (cm == null)
+                return false;
+            cm.setPrimaryClip(ClipData.newPlainText("text", text));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static void updateWidget(Context ctx, boolean clockedIn, boolean onBreak,
+                                    String timerText, String statusText) {
+        if (ctx == null)
+            return;
+        SharedPreferences prefs = ctx.getSharedPreferences(PREF_WIDGET, Context.MODE_PRIVATE);
+        prefs.edit()
+                .putBoolean("clockedIn", clockedIn)
+                .putBoolean("onBreak", onBreak)
+                .putString("timer", timerText != null ? timerText : "00:00:00")
+                .putString("status", statusText != null ? statusText : "")
+                .apply();
+        PunchWidgetProvider.refreshAll(ctx);
+    }
+
+    public static String consumeLaunchPunchAction(Context ctx) {
+        if (!(ctx instanceof Activity))
+            return "";
+        Activity activity = (Activity) ctx;
+        Intent intent = activity.getIntent();
+        if (intent == null)
+            return "";
+        String action = intent.getStringExtra(EXTRA_PUNCH_ACTION);
+        if (action == null)
+            action = "";
+        intent.removeExtra(EXTRA_PUNCH_ACTION);
+        return action;
+    }
+
     public static boolean installApk(Context ctx, String apkPath) {
         if (ctx == null || apkPath == null)
             return false;
@@ -161,7 +210,7 @@ public class Platform {
             session = installer.openSession(sessionId);
 
             try (InputStream in = new FileInputStream(apk);
-                 OutputStream out = session.openWrite("colocourse", 0, apk.length())) {
+                 OutputStream out = session.openWrite("openpunchclock", 0, apk.length())) {
                 byte[] buffer = new byte[65536];
                 int read;
                 while ((read = in.read(buffer)) > 0)
@@ -169,14 +218,10 @@ public class Platform {
                 session.fsync(out);
             }
 
-            // Android répond de façon asynchrone : pour une app hors Play Store, la
-            // première réponse est STATUS_PENDING_USER_ACTION, qui porte l'écran de
-            // confirmation à afficher. Sans ce receveur, l'installation resterait
-            // silencieusement en attente.
             Intent status = new Intent(ACTION_INSTALL_STATUS).setPackage(ctx.getPackageName());
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                flags |= PendingIntent.FLAG_MUTABLE;   // Android remplit l'Intent de réponse
+                flags |= PendingIntent.FLAG_MUTABLE;
 
             PendingIntent pending = PendingIntent.getBroadcast(ctx, sessionId, status, flags);
             session.commit(pending.getIntentSender());
@@ -192,29 +237,24 @@ public class Platform {
         }
     }
 
-    public static final String ACTION_INSTALL_STATUS = "org.colocourse.app.INSTALL_STATUS";
+    public static final String ACTION_INSTALL_STATUS = "org.openpunchclock.app.INSTALL_STATUS";
 
-    // Déclaré dans AndroidManifest.xml. Reçoit l'avancement de la session et ouvre
-    // l'écran de confirmation système quand Android le demande.
     public static class InstallReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context ctx, Intent intent) {
             int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS,
                                             PackageInstaller.STATUS_FAILURE);
             if (status != PackageInstaller.STATUS_PENDING_USER_ACTION)
-                return;   // succès, échec ou annulation : Android a déjà informé l'utilisateur
+                return;
 
             Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
             if (confirm == null)
                 return;
-            // Le receveur n'est pas une Activity : l'écran de confirmation a besoin
-            // de sa propre tâche.
             confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             ctx.startActivity(confirm);
         }
     }
 
-    // Vibration courte : en mode Courses, on coche sans quitter le rayon des yeux.
     public static void vibrate(Context ctx, int ms) {
         if (ctx == null)
             return;
@@ -231,13 +271,10 @@ public class Platform {
             vibrator.vibrate(VibrationEffect.createOneShot(
                     ms, VibrationEffect.DEFAULT_AMPLITUDE));
         } catch (Exception e) {
-            // Pas de vibreur, permission refusée : ce n'est qu'un confort.
+            // optional
         }
     }
 
-    // Mode Courses : l'écran doit rester allumé, on tient le téléphone sans le toucher
-    // pendant des minutes. Les drapeaux de fenêtre ne se posent que sur le thread UI —
-    // les toucher depuis le thread Qt lève une exception.
     public static void keepScreenOn(Context ctx, final boolean on) {
         if (!(ctx instanceof Activity))
             return;
