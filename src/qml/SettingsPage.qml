@@ -94,7 +94,7 @@ Item {
 
         Label {
             Layout.fillWidth: true
-            text: qsTr("Open Punch Clock v0.1.2 — GPLv3")
+            text: qsTr("Open Punch Clock v0.1.3 — GPLv3")
             color: Theme.textDim
             font.pixelSize: 12
         }
