@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
 import OpenPunchClock
 
@@ -11,17 +12,32 @@ Item {
 
     function handleBack() { return false }
 
-    Connections {
-        target: AppController.projects
-        function onRefreshed() {
-            if (!selectedProjectId)
-                selectedProjectId = AppController.projects.defaultProjectId()
+    function syncProjectBox() {
+        const pid = root.selectedProjectId || AppController.projects.defaultProjectId()
+        for (let i = 0; i < AppController.projects.count; ++i) {
+            if (AppController.projects.projectIdAt(i) === pid) {
+                projectBox.currentIndex = i
+                root.selectedProjectId = pid
+                return
+            }
+        }
+        if (AppController.projects.count > 0) {
+            projectBox.currentIndex = 0
+            root.selectedProjectId = AppController.projects.projectIdAt(0)
         }
     }
+
+    Connections {
+        target: AppController.projects
+        function onRefreshed() { root.syncProjectBox() }
+    }
+
+    Component.onCompleted: syncProjectBox()
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.pad
+        anchors.bottomMargin: Theme.pad + 32
         spacing: Theme.gap
 
         ComboBox {
@@ -31,15 +47,6 @@ Item {
             model: AppController.projects
             textRole: "name"
             onActivated: root.selectedProjectId = AppController.projects.projectIdAt(currentIndex)
-            Component.onCompleted: {
-                for (let i = 0; i < AppController.projects.count; ++i) {
-                    if (AppController.projects.data(AppController.projects.index(i, 0), 261)) {
-                        currentIndex = i
-                        break
-                    }
-                }
-                root.selectedProjectId = AppController.projects.projectIdAt(currentIndex)
-            }
         }
 
         Item { Layout.fillHeight: true }
@@ -71,11 +78,18 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 72
                 visible: !AppController.clockedIn
-                text: qsTr("Pointer l'entrée")
+                text: qsTr("PUNCH IN")
                 Material.background: Theme.accent
                 Material.foreground: Theme.onAccent
                 onClicked: {
-                    AppController.punchIn(root.selectedProjectId)
+                    if (!root.selectedProjectId) {
+                        AppController.showToast(qsTr("Choisissez un projet"))
+                        return
+                    }
+                    if (!AppController.punchIn(root.selectedProjectId))
+                        AppController.showToast(qsTr("Impossible de pointer l'entrée"))
+                    else
+                        AppController.showToast(qsTr("Entrée enregistrée"))
                 }
             }
 
@@ -87,25 +101,31 @@ Item {
                 Button {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 64
-                    text: AppController.onBreak ? qsTr("Fin pause") : qsTr("Pause")
-                    enabled: AppController.clockedIn
+                    text: AppController.onBreak ? qsTr("FIN PAUSE") : qsTr("BREAK")
                     Material.background: Theme.surfaceHigh
                     Material.foreground: Theme.text
                     onClicked: {
-                        if (AppController.onBreak)
-                            AppController.endBreak()
-                        else
-                            AppController.startBreak()
+                        if (AppController.onBreak) {
+                            if (AppController.endBreak())
+                                AppController.showToast(qsTr("Pause terminée"))
+                        } else if (AppController.startBreak()) {
+                            AppController.showToast(qsTr("Pause démarrée"))
+                        }
                     }
                 }
 
                 Button {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 64
-                    text: qsTr("Pointer la sortie")
+                    text: qsTr("PUNCH OUT")
                     Material.background: Theme.danger
-                    Material.foreground: "white"
-                    onClicked: AppController.punchOut()
+                    Material.foreground: "#FFFFFF"
+                    onClicked: {
+                        if (!AppController.punchOut())
+                            AppController.showToast(qsTr("Impossible de pointer la sortie"))
+                        else
+                            AppController.showToast(qsTr("Sortie enregistrée"))
+                    }
                 }
             }
         }
@@ -116,27 +136,27 @@ Item {
 
             Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: Theme.touchTarget
                 text: qsTr("Historique")
-                flat: true
-                onClicked: StackView.view.push(historyPage)
+                onClicked: Navigation.push(historyPage)
             }
             Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: Theme.touchTarget
                 text: qsTr("Projets")
-                flat: true
-                onClicked: StackView.view.push(projectsPage)
+                onClicked: Navigation.push(projectsPage)
             }
             Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: Theme.touchTarget
                 text: qsTr("Rapports")
-                flat: true
-                onClicked: StackView.view.push(reportsPage)
+                onClicked: Navigation.push(reportsPage)
             }
             Button {
                 Layout.preferredWidth: Theme.touchTarget
+                Layout.preferredHeight: Theme.touchTarget
                 text: "⚙"
-                flat: true
-                onClicked: StackView.view.push(settingsPage)
+                onClicked: Navigation.push(settingsPage)
             }
         }
     }

@@ -43,6 +43,7 @@ public class PunchWidgetProvider extends AppWidgetProvider {
     }
 
     private static void launchApp(Context context, String punchAction) {
+        Platform.queuePunchAction(context, punchAction);
         Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         if (launch == null)
             return;

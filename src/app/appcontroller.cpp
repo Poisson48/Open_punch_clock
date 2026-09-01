@@ -12,6 +12,7 @@
 
 #include <QDate>
 #include <QDir>
+#include <QHash>
 #include <QFile>
 #include <QStandardPaths>
 #include <QTime>
@@ -69,6 +70,8 @@ bool AppController::init()
         m_overtimeThreshold = std::stod(*o);
     if (auto g = m_db.getSetting("gpsEnabled"))
         m_gpsEnabled = *g == "1";
+    if (auto k = m_db.getSetting("keepScreenOn"))
+        m_keepScreenOn = *k == "1";
     if (auto loc = m_db.getSetting("locale"))
         m_locale = I18n::normalizeLocale(QString::fromStdString(*loc));
     else
@@ -92,6 +95,7 @@ bool AppController::init()
     });
 
     emit settingsChanged();
+    platformKeepScreenOn(m_keepScreenOn);
     refreshWidget();
     return true;
 }
@@ -204,6 +208,7 @@ bool AppController::punchIn(const QString& projectId)
     captureGps(&lat, &lon);
     if (!m_punch.clockIn(projectId.toStdString(), lat, lon))
         return false;
+    m_reminderNotified = false;
     m_tickTimer.start();
     platformVibrate(40);
     if (m_sync)
@@ -275,6 +280,31 @@ void AppController::setGpsEnabled(bool on)
     emit settingsChanged();
 }
 
+void AppController::setKeepScreenOn(bool on)
+{
+    m_keepScreenOn = on;
+    m_db.setSetting("keepScreenOn", on ? "1" : "0");
+    platformKeepScreenOn(on);
+    emit settingsChanged();
+}
+
+void AppController::showToast(const QString& message)
+{
+    if (message.isEmpty())
+        return;
+    m_toastMessage = message;
+    emit toastChanged();
+    platformShowToast(message);
+}
+
+void AppController::clearToast()
+{
+    if (m_toastMessage.isEmpty())
+        return;
+    m_toastMessage.clear();
+    emit toastChanged();
+}
+
 QVariantList AppController::availableLocales() const
 {
     return I18n::availableLocales();
@@ -300,10 +330,13 @@ void AppController::onTick()
 
 void AppController::checkReminder()
 {
-    if (!clockedIn() || onBreak())
+    if (!clockedIn() || onBreak()) {
+        m_reminderNotified = false;
         return;
+    }
     const qint64 elapsedMin = liveElapsedMs() / 60000;
-    if (elapsedMin >= m_reminderMinutes) {
+    if (elapsedMin >= m_reminderMinutes && !m_reminderNotified) {
+        m_reminderNotified = true;
         platformNotify(tr("Open Punch Clock"),
                        tr("N'oubliez pas de pointer la sortie"),
                        QDateTime::currentMSecsSinceEpoch());
@@ -404,6 +437,35 @@ bool AppController::shareXlsxWeek()
         QStringLiteral("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
 }
 
+bool AppController::shareCsvMonth()
+{
+    const auto m = monthReport();
+    const QString path = suggestedExportPath(QStringLiteral("csv"));
+    if (!writeCsvFile(path, m.value(QStringLiteral("fromMs")).toLongLong(),
+                      m.value(QStringLiteral("toMs")).toLongLong()))
+        return false;
+    return platformShareFile(path, QStringLiteral("text/csv"));
+}
+
+bool AppController::shareXlsxMonth()
+{
+    const auto m = monthReport();
+    const QString path = suggestedExportPath(QStringLiteral("xlsx"));
+    if (!writeXlsxFile(path, m.value(QStringLiteral("fromMs")).toLongLong(),
+                       m.value(QStringLiteral("toMs")).toLongLong()))
+        return false;
+    return platformShareFile(path,
+        QStringLiteral("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+}
+
+bool AppController::shareBackup(const QString& passphrase)
+{
+    const QString path = suggestedBackupPath();
+    if (!exportBackup(path, passphrase))
+        return false;
+    return platformShareFile(path, QStringLiteral("application/octet-stream"));
+}
+
 bool AppController::exportBackup(const QString& path, const QString& passphrase)
 {
     if (passphrase.trimmed().isEmpty())
@@ -471,10 +533,11 @@ void AppController::processLaunchIntent()
     const QString action = platformConsumeLaunchPunchAction();
     if (action == QLatin1String("in")) {
         const QString pid = m_projects.defaultProjectId();
-        if (!pid.isEmpty())
-            punchIn(pid);
+        if (!pid.isEmpty() && punchIn(pid))
+            showToast(tr("Entrée (widget)"));
     } else if (action == QLatin1String("out")) {
-        punchOut();
+        if (punchOut())
+            showToast(tr("Sortie (widget)"));
     }
 }
 
@@ -525,6 +588,32 @@ QVariantMap AppController::monthReport()
     return m;
 }
 
+QVariantList AppController::weekReportByProject()
+{
+    const auto w = weekReport();
+    const int64_t from = w.value(QStringLiteral("fromMs")).toLongLong();
+    const int64_t to = w.value(QStringLiteral("toMs")).toLongLong();
+    const int64_t now = QDateTime::currentMSecsSinceEpoch();
+
+    QHash<QString, double> hoursByProject;
+    for (const auto& e : m_db.getTimeEntries(from, to)) {
+        const double rate = m_projects.hourlyRateFor(QString::fromStdString(e.projectId));
+        const auto d = core::computeDuration(e, rate, now);
+        const QString pid = QString::fromStdString(e.projectId);
+        hoursByProject[pid] += d.hours;
+    }
+
+    QVariantList list;
+    for (auto it = hoursByProject.constBegin(); it != hoursByProject.constEnd(); ++it) {
+        QVariantMap row;
+        row.insert(QStringLiteral("projectId"), it.key());
+        row.insert(QStringLiteral("projectName"), m_projects.nameFor(it.key()));
+        row.insert(QStringLiteral("hours"), it.value());
+        list.append(row);
+    }
+    return list;
+}
+
 QVariantList AppController::auditLog(int limit)
 {
     QVariantList list;
@@ -560,8 +649,11 @@ void AppController::handleJoinUrl(const QUrl& url)
 
 void AppController::onApplicationStateChanged(Qt::ApplicationState state)
 {
-    if (state == Qt::ApplicationActive && m_sync)
-        m_sync->catchUpOnForeground();
+    if (state == Qt::ApplicationActive) {
+        processLaunchIntent();
+        if (m_sync)
+            m_sync->catchUpOnForeground();
+    }
 }
 
 } // namespace app

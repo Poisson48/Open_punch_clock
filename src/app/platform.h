@@ -32,6 +32,9 @@ void platformUpdateWidget(bool clockedIn, bool onBreak,
 // Action widget au lancement : "in", "out" ou vide.
 QString platformConsumeLaunchPunchAction();
 
+// Toast Android natif (no-op desktop → message QML seulement).
+void platformShowToast(const QString& text);
+
 // Installe un APK déjà téléchargé (PackageInstaller). Android affiche sa propre
 // demande de confirmation ; l'app n'installe rien dans le dos de l'utilisateur.
 // false hors Android, ou si la session d'installation n'a pas pu s'ouvrir.

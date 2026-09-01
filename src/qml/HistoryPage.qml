@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
 import OpenPunchClock
 
@@ -80,5 +81,8 @@ Item {
         }
     }
 
-    TimeCardEditor { id: editor; onSaved: AppController.entries.reload() }
+    TimeCardEditor {
+        id: editor
+        onSaved: AppController.entries.reload()
+    }
 }

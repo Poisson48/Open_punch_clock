@@ -125,6 +125,19 @@ QString platformConsumeLaunchPunchAction()
     return result.isValid() ? result.toString() : QString{};
 }
 
+void platformShowToast(const QString& text)
+{
+    const QJniObject ctx = androidContext();
+    if (!ctx.isValid())
+        return;
+
+    const QJniObject jText = QJniObject::fromString(text);
+    QJniObject::callStaticMethod<void>(
+        kPlatformClass, "showToast",
+        "(Landroid/content/Context;Ljava/lang/String;)V",
+        ctx.object(), jText.object<jstring>());
+}
+
 bool platformInstallApk(const QString& apkPath)
 {
     const QJniObject ctx = androidContext();
@@ -199,6 +212,8 @@ bool platformSetClipboard(const QString&) { return false; }
 void platformUpdateWidget(bool, bool, const QString&, const QString&) {}
 
 QString platformConsumeLaunchPunchAction() { return {}; }
+
+void platformShowToast(const QString&) {}
 
 bool platformInstallApk(const QString&) { return false; }
 

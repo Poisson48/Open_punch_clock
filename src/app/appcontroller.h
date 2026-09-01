@@ -37,6 +37,8 @@ class AppController : public QObject
     Q_PROPERTY(QString locale READ locale WRITE setLocale NOTIFY localeChanged)
     Q_PROPERTY(QVariantList availableLocales READ availableLocales CONSTANT)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
+    Q_PROPERTY(QString toastMessage READ toastMessage NOTIFY toastChanged)
+    Q_PROPERTY(bool keepScreenOn READ keepScreenOn WRITE setKeepScreenOn NOTIFY settingsChanged)
 
     Q_PROPERTY(ProjectModel* projects READ projects CONSTANT)
     Q_PROPERTY(TimeEntryModel* entries READ entries CONSTANT)
@@ -67,6 +69,8 @@ public:
     QString locale() const { return m_locale; }
     QVariantList availableLocales() const;
     QString appVersion() const;
+    QString toastMessage() const { return m_toastMessage; }
+    bool keepScreenOn() const { return m_keepScreenOn; }
 
     ProjectModel* projects() { return &m_projects; }
     TimeEntryModel* entries() { return &m_entries; }
@@ -90,18 +94,25 @@ public:
 
     Q_INVOKABLE bool shareCsvWeek();
     Q_INVOKABLE bool shareXlsxWeek();
+    Q_INVOKABLE bool shareCsvMonth();
+    Q_INVOKABLE bool shareXlsxMonth();
 
     Q_INVOKABLE bool exportBackup(const QString& path, const QString& passphrase);
     Q_INVOKABLE bool importBackup(const QString& path, const QString& passphrase);
+    Q_INVOKABLE bool shareBackup(const QString& passphrase);
 
     Q_INVOKABLE QString suggestedBackupPath() const;
 
     Q_INVOKABLE void processLaunchIntent();
 
     Q_INVOKABLE bool copyToClipboard(const QString& text);
+    Q_INVOKABLE void showToast(const QString& message);
+    Q_INVOKABLE void clearToast();
+    Q_INVOKABLE void setKeepScreenOn(bool on);
 
     Q_INVOKABLE QVariantMap weekReport();
     Q_INVOKABLE QVariantMap monthReport();
+    Q_INVOKABLE QVariantList weekReportByProject();
 
     Q_INVOKABLE QVariantList auditLog(int limit = 100);
 
@@ -122,6 +133,7 @@ signals:
     void localeChanged();
     void retranslateRequested();
     void reminderTriggered();
+    void toastChanged();
 
 private slots:
     void onTick();
@@ -146,7 +158,10 @@ private:
     int              m_payPeriodDays = 14;
     double           m_overtimeThreshold = 35.0;
     bool             m_gpsEnabled = false;
+    bool             m_keepScreenOn = false;
+    bool             m_reminderNotified = false;
     QString          m_locale;
+    QString          m_toastMessage;
 };
 
 } // namespace app

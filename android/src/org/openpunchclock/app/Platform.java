@@ -36,6 +36,7 @@ public class Platform {
 
     public static final String PREF_WIDGET = "openpunchclock_widget";
     public static final String EXTRA_PUNCH_ACTION = "punch_action";
+    private static final String PREF_PENDING_PUNCH = "pending_punch_action";
 
     public static void createChannel(Context ctx) {
         if (ctx == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O)
@@ -179,6 +180,16 @@ public class Platform {
     }
 
     public static String consumeLaunchPunchAction(Context ctx) {
+        if (ctx == null)
+            return "";
+
+        SharedPreferences prefs = ctx.getSharedPreferences(PREF_WIDGET, Context.MODE_PRIVATE);
+        String pending = prefs.getString(PREF_PENDING_PUNCH, "");
+        if (pending != null && !pending.isEmpty()) {
+            prefs.edit().remove(PREF_PENDING_PUNCH).apply();
+            return pending;
+        }
+
         if (!(ctx instanceof Activity))
             return "";
         Activity activity = (Activity) ctx;
@@ -190,6 +201,22 @@ public class Platform {
             action = "";
         intent.removeExtra(EXTRA_PUNCH_ACTION);
         return action;
+    }
+
+    public static void queuePunchAction(Context ctx, String action) {
+        if (ctx == null || action == null || action.isEmpty())
+            return;
+        ctx.getSharedPreferences(PREF_WIDGET, Context.MODE_PRIVATE)
+                .edit()
+                .putString(PREF_PENDING_PUNCH, action)
+                .apply();
+    }
+
+    public static void showToast(Context ctx, String text) {
+        if (ctx == null || text == null || text.isEmpty())
+            return;
+        android.widget.Toast.makeText(ctx.getApplicationContext(), text,
+                android.widget.Toast.LENGTH_SHORT).show();
     }
 
     public static boolean installApk(Context ctx, String apkPath) {

@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Dialogue sombre commun à toute l'app : un titre, du contenu libre, deux boutons.
-// `destructive: true` colore l'action de validation en rouge (quitter une liste).
+// Dialogue commun : titre, contenu libre, boutons OK/Annuler.
+// `destructive: true` colore l'action de validation en rouge.
 Dialog {
     id: dlg
 

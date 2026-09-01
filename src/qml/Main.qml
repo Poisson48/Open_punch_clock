@@ -17,6 +17,8 @@ ApplicationWindow {
     Material.foreground: Theme.text
     Material.accent: Theme.accent
 
+    Component.onCompleted: Navigation.stack = stack
+
     readonly property bool offline: !AppController.online
     readonly property bool pending: AppController.pendingChanges > 0
 
@@ -71,7 +73,8 @@ ApplicationWindow {
                 Layout.preferredWidth: Theme.touchTarget
                 Layout.preferredHeight: Theme.touchTarget
                 visible: stack.depth > 1
-                contentItem: Icon { name: "back"; color: Theme.text; size: 22 }
+                text: "←"
+                font.pixelSize: 20
                 onClicked: handleSystemBack()
             }
 
@@ -85,15 +88,11 @@ ApplicationWindow {
                 elide: Text.ElideRight
             }
 
-            Item {
-                Layout.preferredWidth: stack.currentItem && stack.currentItem.actions
-                                       ? stack.currentItem.actions.implicitWidth : 0
+            Loader {
+                id: actionsLoader
+                Layout.preferredWidth: item ? item.implicitWidth : 0
                 Layout.preferredHeight: Theme.touchTarget
-                Loader {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    sourceComponent: stack.currentItem ? stack.currentItem.actions : null
-                }
+                sourceComponent: stack.currentItem ? stack.currentItem.actions : null
             }
         }
 
@@ -103,10 +102,45 @@ ApplicationWindow {
     StackView {
         id: stack
         anchors.fill: parent
+        anchors.bottomMargin: (statusBanner.visible ? 28 : 0) + (toastBar.visible ? 40 : 0)
         initialItem: punchPage
     }
 
     Component { id: punchPage; PunchPage {} }
+
+    Rectangle {
+        id: toastBar
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: statusBanner.top
+        height: visible ? 40 : 0
+        color: Theme.surfaceHigh
+        z: 11
+        visible: AppController.toastMessage.length > 0
+        opacity: visible ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 200 } }
+
+        Label {
+            anchors.centerIn: parent
+            text: AppController.toastMessage
+            color: Theme.text
+            font.pixelSize: 14
+        }
+
+        Timer {
+            id: toastTimer
+            interval: 2500
+            onTriggered: AppController.clearToast()
+        }
+
+        Connections {
+            target: AppController
+            function onToastChanged() {
+                if (AppController.toastMessage.length > 0)
+                    toastTimer.restart()
+            }
+        }
+    }
 
     Rectangle {
         anchors.left: parent.left
