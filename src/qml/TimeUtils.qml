@@ -9,11 +9,11 @@ QtObject {
         const time = Qt.formatDateTime(d, "HH:mm")
         const now = new Date()
         if (d.toDateString() === now.toDateString())
-            return "aujourd'hui à " + time
+            return qsTr("aujourd'hui à ") + time
         const yesterday = new Date(now.getTime() - 86400000)
         if (d.toDateString() === yesterday.toDateString())
-            return "hier à " + time
-        return Qt.formatDateTime(d, "d MMM à HH:mm")
+            return qsTr("hier à ") + time
+        return Qt.formatDateTime(d, qsTr("d MMM 'à' HH:mm"))
     }
 
     function formatDuration(ms) {
@@ -27,16 +27,16 @@ QtObject {
     }
 
     function formatHours(h) {
-        return h.toFixed(2) + " h"
+        return h.toFixed(2) + qsTr(" h")
     }
 
     function dayLabel(ms) {
         const d = new Date(ms)
         const now = new Date()
         if (d.toDateString() === now.toDateString())
-            return "Aujourd'hui"
+            return qsTr("Aujourd'hui")
         if (new Date(now.getTime() - 86400000).toDateString() === d.toDateString())
-            return "Hier"
-        return Qt.formatDate(d, "dddd d MMMM")
+            return qsTr("Hier")
+        return Qt.formatDate(d, qsTr("dddd d MMMM"))
     }
 }

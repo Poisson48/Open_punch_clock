@@ -34,6 +34,7 @@ target_link_libraries(store PUBLIC Qt6::Core Qt6::Sql core)
 
 set(APPLIB_SOURCES
     app/appcontroller.cpp
+    app/i18n.cpp
     app/punchengine.cpp
     app/projectmodel.cpp
     app/timeentrymodel.cpp
@@ -95,12 +96,42 @@ target_link_libraries(openpunchclock PRIVATE
     PkgConfig::SODIUM PkgConfig::SECP256K1
 )
 
+set(PUNCH_TS_FILES
+    translations/openpunchclock_fr.ts
+    translations/openpunchclock_en.ts
+    translations/openpunchclock_de.ts
+    translations/openpunchclock_es.ts
+    translations/openpunchclock_it.ts
+    translations/openpunchclock_pt.ts
+    translations/openpunchclock_pt_BR.ts
+    translations/openpunchclock_nl.ts
+    translations/openpunchclock_pl.ts
+    translations/openpunchclock_ru.ts
+    translations/openpunchclock_zh_CN.ts
+    translations/openpunchclock_ja.ts
+    translations/openpunchclock_ko.ts
+    translations/openpunchclock_ar.ts
+    translations/openpunchclock_tr.ts
+    translations/openpunchclock_uk.ts
+)
+
+qt_add_translations(openpunchclock
+    TS_FILES ${PUNCH_TS_FILES}
+    SOURCES
+        app/appcontroller.cpp
+        app/timeentrymodel.cpp
+        app/updater.cpp
+        ${PUNCH_QML_FILES}
+    RESOURCE_PREFIX "/i18n"
+    QM_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/translations"
+)
+
 set_property(TARGET openpunchclock PROPERTY
     QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/android")
 set_property(TARGET openpunchclock PROPERTY QT_ANDROID_TARGET_SDK_VERSION 34)
 
-set(PUNCH_VERSION_NAME "0.1.0" CACHE STRING "android:versionName")
-set(PUNCH_VERSION_CODE "1" CACHE STRING "android:versionCode")
+set(PUNCH_VERSION_NAME "0.1.1" CACHE STRING "android:versionName")
+set(PUNCH_VERSION_CODE "2" CACHE STRING "android:versionCode")
 set_property(TARGET openpunchclock PROPERTY QT_ANDROID_VERSION_NAME "${PUNCH_VERSION_NAME}")
 set_property(TARGET openpunchclock PROPERTY QT_ANDROID_VERSION_CODE "${PUNCH_VERSION_CODE}")
 target_compile_definitions(applib PUBLIC PUNCH_APP_VERSION="${PUNCH_VERSION_NAME}")

@@ -5,7 +5,7 @@ import OpenPunchClock
 
 Item {
     id: root
-    readonly property string pageTitle: "Projets"
+    readonly property string pageTitle: qsTr("Projets")
 
     property Component actions: Row {
         ToolButton {
@@ -61,11 +61,11 @@ Item {
 
     ColoDialog {
         id: createDialog
-        title: "Nouveau projet"
+        title: qsTr("Nouveau projet")
         ColumnLayout {
             width: parent.width
-            ColoTextField { id: newName; placeholderText: "Nom du client"; Layout.fillWidth: true }
-            ColoTextField { id: newRate; placeholderText: "Taux horaire"; text: "15"; Layout.fillWidth: true }
+            ColoTextField { id: newName; placeholderText: qsTr("Nom du client"); Layout.fillWidth: true }
+            ColoTextField { id: newRate; placeholderText: qsTr("Taux horaire"); text: "15"; Layout.fillWidth: true }
         }
         onAccepted: {
             AppController.projects.createProject(newName.text, parseFloat(newRate.text) || 0, "#2E7D32")
@@ -74,7 +74,7 @@ Item {
 
     ColoDialog {
         id: editDialog
-        title: "Modifier le projet"
+        title: qsTr("Modifier le projet")
         property string pid: ""
         ColumnLayout {
             width: parent.width

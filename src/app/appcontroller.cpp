@@ -1,4 +1,5 @@
 #include "appcontroller.h"
+#include "i18n.h"
 #include "syncengine.h"
 
 #include "../core/csv.h"
@@ -66,6 +67,10 @@ bool AppController::init()
         m_overtimeThreshold = std::stod(*o);
     if (auto g = m_db.getSetting("gpsEnabled"))
         m_gpsEnabled = *g == "1";
+    if (auto loc = m_db.getSetting("locale"))
+        m_locale = I18n::normalizeLocale(QString::fromStdString(*loc));
+    else
+        m_locale = I18n::systemLocale();
 
     m_punch.reload();
     m_projects.reload();
@@ -224,6 +229,23 @@ void AppController::setGpsEnabled(bool on)
     emit settingsChanged();
 }
 
+QVariantList AppController::availableLocales() const
+{
+    return I18n::availableLocales();
+}
+
+void AppController::setLocale(const QString& code)
+{
+    const QString norm = I18n::normalizeLocale(code);
+    if (m_locale == norm)
+        return;
+    m_locale = norm;
+    m_db.setSetting("locale", m_locale.toStdString());
+    m_entries.reload();
+    emit localeChanged();
+    emit retranslateRequested();
+}
+
 void AppController::onTick()
 {
     emit tick();
@@ -235,8 +257,8 @@ void AppController::checkReminder()
         return;
     const qint64 elapsedMin = liveElapsedMs() / 60000;
     if (elapsedMin >= m_reminderMinutes) {
-        platformNotify(QStringLiteral("Open Punch Clock"),
-                       QStringLiteral("N'oubliez pas de pointer la sortie"),
+        platformNotify(tr("Open Punch Clock"),
+                       tr("N'oubliez pas de pointer la sortie"),
                        QDateTime::currentMSecsSinceEpoch());
         emit reminderTriggered();
     }
@@ -246,8 +268,18 @@ std::vector<std::vector<std::string>> AppController::buildExportRows(qint64 from
                                                                    qint64 toMs) const
 {
     std::vector<std::vector<std::string>> rows;
-    rows.push_back({"Date", "Projet", "Debut", "Fin", "Pause_h", "Net_h", "Taux",
-                    "Gains", "Notes", "Tags"});
+    rows.push_back({
+        tr("Date").toStdString(),
+        tr("Projet").toStdString(),
+        tr("Début").toStdString(),
+        tr("Fin").toStdString(),
+        tr("Pause (h)").toStdString(),
+        tr("Net (h)").toStdString(),
+        tr("Taux").toStdString(),
+        tr("Gains").toStdString(),
+        tr("Notes").toStdString(),
+        tr("Tags").toStdString(),
+    });
     const int64_t now = QDateTime::currentMSecsSinceEpoch();
     for (const auto& e : m_db.getTimeEntries(fromMs, toMs > 0 ? toMs : 0)) {
         const double rate = m_projects.hourlyRateFor(QString::fromStdString(e.projectId));

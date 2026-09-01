@@ -4,6 +4,7 @@
 #include "../core/timecalculator.h"
 
 #include <QDateTime>
+#include <QLocale>
 #include <QUuid>
 
 namespace app {
@@ -40,11 +41,11 @@ void TimeEntryModel::reload(int64_t fromMs, int64_t toMs)
         const QDateTime dt = QDateTime::fromMSecsSinceEpoch(e.startMs);
         const QDate today = QDate::currentDate();
         if (dt.date() == today)
-            r.day = QStringLiteral("Aujourd'hui");
+            r.day = tr("Aujourd'hui");
         else if (dt.date() == today.addDays(-1))
-            r.day = QStringLiteral("Hier");
+            r.day = tr("Hier");
         else
-            r.day = dt.toString(QStringLiteral("dddd d MMMM"));
+            r.day = QLocale().toString(dt.date(), QStringLiteral("dddd d MMMM"));
         m_rows.push_back(std::move(r));
     }
     endResetModel();

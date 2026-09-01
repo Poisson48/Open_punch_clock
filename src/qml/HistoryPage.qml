@@ -5,7 +5,7 @@ import OpenPunchClock
 
 Item {
     id: root
-    readonly property string pageTitle: "Historique"
+    readonly property string pageTitle: qsTr("Historique")
 
     property Component actions: Row {
         ToolButton {
@@ -56,7 +56,8 @@ Item {
                 }
                 Label {
                     text: TimeUtils.formatStamp(model.startMs)
-                        + (model.endMs > 0 ? " → " + TimeUtils.formatStamp(model.endMs) : " (en cours)")
+                        + (model.endMs > 0 ? " → " + TimeUtils.formatStamp(model.endMs)
+                                             : (" " + qsTr("(en cours)")))
                     color: Theme.textDim
                     font.pixelSize: 13
                 }

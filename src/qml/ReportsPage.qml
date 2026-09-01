@@ -5,7 +5,7 @@ import OpenPunchClock
 
 Item {
     id: root
-    readonly property string pageTitle: "Rapports"
+    readonly property string pageTitle: qsTr("Rapports")
 
     property var week: AppController.weekReport()
     property var month: AppController.monthReport()
@@ -28,14 +28,14 @@ Item {
     ColoMenu {
         id: exportMenu
         MenuItem {
-            text: "Export CSV (semaine)"
+            text: qsTr("Export CSV (semaine)")
             onTriggered: {
                 const path = AppController.suggestedExportPath("csv")
                 AppController.writeCsvFile(path, week.fromMs, week.toMs)
             }
         }
         MenuItem {
-            text: "Export XLSX (semaine)"
+            text: qsTr("Export XLSX (semaine)")
             onTriggered: {
                 const path = AppController.suggestedExportPath("xlsx")
                 AppController.writeXlsxFile(path, week.fromMs, week.toMs)
@@ -50,19 +50,23 @@ Item {
 
         GroupBox {
             Layout.fillWidth: true
-            title: "Cette semaine"
-            Label { text: TimeUtils.formatHours(week.hours) + " · HS: " + week.overtime.toFixed(2) + " h" }
+            title: qsTr("Cette semaine")
+            Label {
+                text: TimeUtils.formatHours(week.hours) + qsTr(" · HS: ") + week.overtime.toFixed(2) + qsTr(" h")
+            }
         }
 
         GroupBox {
             Layout.fillWidth: true
-            title: "Ce mois"
-            Label { text: TimeUtils.formatHours(month.hours) + " · HS: " + month.overtime.toFixed(2) + " h" }
+            title: qsTr("Ce mois")
+            Label {
+                text: TimeUtils.formatHours(month.hours) + qsTr(" · HS: ") + month.overtime.toFixed(2) + qsTr(" h")
+            }
         }
 
         Button {
             Layout.fillWidth: true
-            text: "Actualiser"
+            text: qsTr("Actualiser")
             onClicked: refresh()
         }
 

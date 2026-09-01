@@ -5,7 +5,7 @@ import OpenPunchClock
 
 ColoDialog {
     id: dlg
-    title: "Time card"
+    title: qsTr("Fiche horaire")
     property var onSaved: function() {}
 
     property string entryId: ""
@@ -45,13 +45,13 @@ ColoDialog {
 
     ColumnLayout {
         width: parent.width
-        ColoTextField { id: startField; placeholderText: "Début (yyyy-MM-dd HH:mm)"; Layout.fillWidth: true }
-        ColoTextField { id: endField; placeholderText: "Fin"; Layout.fillWidth: true }
-        ColoTextField { id: breakField; placeholderText: "Pause (minutes)"; Layout.fillWidth: true }
-        ColoTextField { id: notesField; placeholderText: "Notes"; Layout.fillWidth: true }
-        ColoTextField { id: tagsField; placeholderText: "Tags"; Layout.fillWidth: true }
-        ColoTextField { id: reimbField; placeholderText: "Remboursement"; Layout.fillWidth: true }
-        ColoTextField { id: deductField; placeholderText: "Déduction"; Layout.fillWidth: true }
+        ColoTextField { id: startField; placeholderText: qsTr("Début (yyyy-MM-dd HH:mm)"); Layout.fillWidth: true }
+        ColoTextField { id: endField; placeholderText: qsTr("Fin"); Layout.fillWidth: true }
+        ColoTextField { id: breakField; placeholderText: qsTr("Pause (minutes)"); Layout.fillWidth: true }
+        ColoTextField { id: notesField; placeholderText: qsTr("Notes"); Layout.fillWidth: true }
+        ColoTextField { id: tagsField; placeholderText: qsTr("Tags"); Layout.fillWidth: true }
+        ColoTextField { id: reimbField; placeholderText: qsTr("Remboursement"); Layout.fillWidth: true }
+        ColoTextField { id: deductField; placeholderText: qsTr("Déduction"); Layout.fillWidth: true }
     }
 
     onAccepted: {

@@ -7,7 +7,7 @@ import OpenPunchClock
 ApplicationWindow {
     id: window
     visible: true
-    title: "Open Punch Clock"
+    title: qsTr("Open Punch Clock")
     width: 400
     height: 780
     color: Theme.background
@@ -78,7 +78,7 @@ ApplicationWindow {
             Label {
                 Layout.fillWidth: true
                 text: stack.currentItem && stack.currentItem.pageTitle
-                      ? stack.currentItem.pageTitle : "Open Punch Clock"
+                      ? stack.currentItem.pageTitle : qsTr("Open Punch Clock")
                 font.pixelSize: 18
                 font.bold: true
                 color: Theme.text
@@ -121,7 +121,7 @@ ApplicationWindow {
             id: statusBanner
             anchors.centerIn: parent
             visible: offline || pending
-            text: offline ? "Hors ligne" : "Sync en attente…"
+            text: offline ? qsTr("Hors ligne") : qsTr("Sync en attente…")
             color: Theme.text
             font.pixelSize: 12
         }

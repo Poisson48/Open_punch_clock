@@ -198,9 +198,9 @@ QString Updater::formatEntries(const QVariantList &entries)
         if (ver.isEmpty())
             continue;
         if (notes.isEmpty())
-            blocks << QStringLiteral("Version %1").arg(ver);
+            blocks << tr("Version %1").arg(ver);
         else
-            blocks << QStringLiteral("Version %1\n\n%2").arg(ver, notes);
+            blocks << tr("Version %1\n\n%2").arg(ver, notes);
     }
     return blocks.join(QStringLiteral("\n\n————————————\n\n")).trimmed();
 }

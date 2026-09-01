@@ -2,22 +2,17 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Historique des notes de version (releases GitHub). Utilisé avant une maj, après
-// une maj (« quoi de neuf »), ou depuis le menu pour feuilleter le passé.
 ColoDialog {
     id: dlg
 
-    // "pending" = versions plus récentes (avant téléchargement)
-    // "whatsNew" = versions installées pas encore lues (après maj)
-    // "history"  = tout l'historique
     property string mode: "history"
 
-    title: mode === "pending" ? ("Nouveautés — " + Updater.latestVersion)
-         : mode === "whatsNew" ? ("Quoi de neuf — " + Updater.currentVersion)
-         : "Notes de version"
-    acceptText: mode === "pending" ? "Télécharger"
-              : mode === "whatsNew" ? "Compris"
-              : "Fermer"
+    title: mode === "pending" ? qsTr("Nouveautés — %1").arg(Updater.latestVersion)
+         : mode === "whatsNew" ? qsTr("Quoi de neuf — %1").arg(Updater.currentVersion)
+         : qsTr("Notes de version")
+    acceptText: mode === "pending" ? qsTr("Télécharger")
+              : mode === "whatsNew" ? qsTr("Compris")
+              : qsTr("Fermer")
     showCancel: mode === "pending"
     destructive: false
 
@@ -26,7 +21,6 @@ ColoDialog {
             return Updater.releaseNotes
         if (mode === "whatsNew")
             return Updater.whatsNewNotes
-        // Historique : on assemble depuis la liste structurée.
         let blocks = []
         for (let i = 0; i < Updater.changelog.length; ++i) {
             const e = Updater.changelog[i]
@@ -35,8 +29,8 @@ ColoDialog {
             if (!ver)
                 continue
             blocks.push(notes.length > 0
-                        ? ("Version " + ver + "\n\n" + notes)
-                        : ("Version " + ver))
+                        ? qsTr("Version %1\n\n%2").arg(ver).arg(notes)
+                        : qsTr("Version %1").arg(ver))
         }
         return blocks.join("\n\n————————————\n\n")
     }
@@ -49,8 +43,8 @@ ColoDialog {
         Layout.fillWidth: true
         visible: dlg.bodyText.length === 0
         text: mode === "history"
-              ? "Aucune note de version pour l'instant."
-              : "Corrections et améliorations."
+              ? qsTr("Aucune note de version pour l'instant.")
+              : qsTr("Corrections et améliorations.")
         color: Theme.textDim
         font.pixelSize: 14
         wrapMode: Text.WordWrap
@@ -82,8 +76,5 @@ ColoDialog {
             Updater.download()
         else if (mode === "whatsNew")
             Updater.acknowledgeNotes()
-    }
-    onRejected: {
-        // Fermer sans télécharger / sans marquer comme lu.
     }
 }

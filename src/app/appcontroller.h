@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QString>
+#include <QVariantList>
 
 namespace net { class RelayPool; }
 
@@ -33,6 +34,8 @@ class AppController : public QObject
     Q_PROPERTY(double overtimeThreshold READ overtimeThreshold WRITE setOvertimeThreshold NOTIFY settingsChanged)
     Q_PROPERTY(bool gpsEnabled READ gpsEnabled WRITE setGpsEnabled NOTIFY settingsChanged)
     Q_PROPERTY(bool syncEnabled READ syncEnabled NOTIFY settingsChanged)
+    Q_PROPERTY(QString locale READ locale WRITE setLocale NOTIFY localeChanged)
+    Q_PROPERTY(QVariantList availableLocales READ availableLocales CONSTANT)
 
     Q_PROPERTY(ProjectModel* projects READ projects CONSTANT)
     Q_PROPERTY(TimeEntryModel* entries READ entries CONSTANT)
@@ -60,6 +63,8 @@ public:
     double overtimeThreshold() const;
     bool gpsEnabled() const;
     bool syncEnabled() const;
+    QString locale() const { return m_locale; }
+    QVariantList availableLocales() const;
 
     ProjectModel* projects() { return &m_projects; }
     TimeEntryModel* entries() { return &m_entries; }
@@ -73,6 +78,7 @@ public:
     Q_INVOKABLE void setPayPeriodDays(int d);
     Q_INVOKABLE void setOvertimeThreshold(double h);
     Q_INVOKABLE void setGpsEnabled(bool on);
+    Q_INVOKABLE void setLocale(const QString& code);
 
     Q_INVOKABLE QString exportCsv(qint64 fromMs, qint64 toMs);
     Q_INVOKABLE bool writeCsvFile(const QString& path, qint64 fromMs, qint64 toMs);
@@ -99,6 +105,8 @@ signals:
     void onlineChanged(bool online);
     void outboxChanged();
     void settingsChanged();
+    void localeChanged();
+    void retranslateRequested();
     void reminderTriggered();
 
 private slots:
@@ -122,6 +130,7 @@ private:
     int              m_payPeriodDays = 14;
     double           m_overtimeThreshold = 35.0;
     bool             m_gpsEnabled = false;
+    QString          m_locale;
 };
 
 } // namespace app

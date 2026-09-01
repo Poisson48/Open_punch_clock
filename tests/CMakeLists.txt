@@ -30,3 +30,8 @@ target_include_directories(tst_qml PRIVATE ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(tst_qml PRIVATE applib store core Qt6::Test)
 add_test(NAME qml COMMAND tst_qml)
 set_tests_properties(qml PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+qt_add_executable(tst_i18n tst_i18n.cpp)
+target_include_directories(tst_i18n PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(tst_i18n PRIVATE applib Qt6::Test)
+add_test(NAME i18n COMMAND tst_i18n)

@@ -5,7 +5,7 @@ import OpenPunchClock
 
 Item {
     id: root
-    readonly property string pageTitle: "Pointeuse"
+    readonly property string pageTitle: qsTr("Pointeuse")
 
     property string selectedProjectId: AppController.projects.defaultProjectId()
 
@@ -56,14 +56,13 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             text: AppController.clockedIn
                   ? ("~ " + AppController.liveEarnings.toFixed(2) + " €")
-                  : "Prêt à pointer"
+                  : qsTr("Prêt à pointer")
             font.pixelSize: 20
             color: Theme.textDim
         }
 
         Item { Layout.preferredHeight: Theme.gap }
 
-        // Zone boutons fixe (G10)
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 16
@@ -72,7 +71,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 72
                 visible: !AppController.clockedIn
-                text: "PUNCH IN"
+                text: qsTr("Pointer l'entrée")
                 Material.background: Theme.accent
                 Material.foreground: Theme.onAccent
                 onClicked: {
@@ -88,7 +87,7 @@ Item {
                 Button {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 64
-                    text: AppController.onBreak ? "FIN PAUSE" : "BREAK"
+                    text: AppController.onBreak ? qsTr("Fin pause") : qsTr("Pause")
                     enabled: AppController.clockedIn
                     Material.background: Theme.surfaceHigh
                     Material.foreground: Theme.text
@@ -103,7 +102,7 @@ Item {
                 Button {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 64
-                    text: "PUNCH OUT"
+                    text: qsTr("Pointer la sortie")
                     Material.background: Theme.danger
                     Material.foreground: "white"
                     onClicked: AppController.punchOut()
@@ -117,19 +116,19 @@ Item {
 
             Button {
                 Layout.fillWidth: true
-                text: "Historique"
+                text: qsTr("Historique")
                 flat: true
                 onClicked: StackView.view.push(historyPage)
             }
             Button {
                 Layout.fillWidth: true
-                text: "Projets"
+                text: qsTr("Projets")
                 flat: true
                 onClicked: StackView.view.push(projectsPage)
             }
             Button {
                 Layout.fillWidth: true
-                text: "Rapports"
+                text: qsTr("Rapports")
                 flat: true
                 onClicked: StackView.view.push(reportsPage)
             }

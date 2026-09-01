@@ -4,8 +4,10 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QTranslator>
 
 #include "appcontroller.h"
+#include "i18n.h"
 #include "permissions.h"
 #include "platform.h"
 #include "theme.h"
@@ -25,6 +27,9 @@ int main(int argc, char *argv[])
         qCritical("AppController::init() failed");
         return 1;
     }
+
+    QTranslator translator;
+    app::I18n::installTranslator(&app, &translator, controller.locale());
 
     QDesktopServices::setUrlHandler(QStringLiteral("openpunchclock"),
                                     &controller, "handleJoinUrl");
@@ -53,6 +58,12 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("AppController"), &controller);
     engine.rootContext()->setContextProperty(QStringLiteral("Theme"), &theme);
     engine.rootContext()->setContextProperty(QStringLiteral("Updater"), &updater);
+
+    QObject::connect(&controller, &app::AppController::retranslateRequested, &engine,
+                     [&app, &translator, &controller, &engine]() {
+        app::I18n::installTranslator(&app, &translator, controller.locale());
+        engine.retranslate();
+    });
 
     const QUrl url(QStringLiteral("qrc:/OpenPunchClock/qml/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
