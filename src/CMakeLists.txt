@@ -130,8 +130,8 @@ set_property(TARGET openpunchclock PROPERTY
     QT_ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_SOURCE_DIR}/android")
 set_property(TARGET openpunchclock PROPERTY QT_ANDROID_TARGET_SDK_VERSION 34)
 
-set(PUNCH_VERSION_NAME "0.1.1" CACHE STRING "android:versionName")
-set(PUNCH_VERSION_CODE "2" CACHE STRING "android:versionCode")
+set(PUNCH_VERSION_NAME "0.1.2" CACHE STRING "android:versionName")
+set(PUNCH_VERSION_CODE "3" CACHE STRING "android:versionCode")
 set_property(TARGET openpunchclock PROPERTY QT_ANDROID_VERSION_NAME "${PUNCH_VERSION_NAME}")
 set_property(TARGET openpunchclock PROPERTY QT_ANDROID_VERSION_CODE "${PUNCH_VERSION_CODE}")
 target_compile_definitions(applib PUBLIC PUNCH_APP_VERSION="${PUNCH_VERSION_NAME}")

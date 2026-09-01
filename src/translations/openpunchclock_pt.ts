@@ -287,6 +287,14 @@
     </message>
     <message>
         <location filename="../qml/SettingsPage.qml" line="97" />
+        <source>Open Punch Clock v0.1.2 — GPLv3</source>
+        <translation>Open Punch Clock v0.1.2 — GPLv3</translation>
+    </message>
+    <message>
+        <source>Open Punch Clock v0.1.1 — GPLv3</source>
+        <translation>Open Punch Clock v0.1.1 — GPLv3</translation>
+    </message>
+    <message>
         <source>Open Punch Clock v0.1 — GPLv3</source>
         <translation>Open Punch Clock v0.1 — GPLv3</translation>
     </message>
