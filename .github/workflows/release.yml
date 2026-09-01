@@ -1,0 +1,116 @@
+name: Release
+
+# Tag v* (ex. v0.1.0) → APK arm64 + AppImage → GitHub Release → colo-apps (cron).
+#   git tag -a v0.1.0 -m "Notes affichées dans l'app avant MAJ" && git push origin v0.1.0
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.v.outputs.name }}
+      code: ${{ steps.v.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        run: |
+          echo "name=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          echo "code=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+
+  apk:
+    needs: version
+    uses: ./.github/workflows/android.yml
+    with:
+      version_name: ${{ needs.version.outputs.name }}
+      version_code: ${{ needs.version.outputs.code }}
+      require_release_key: true
+    secrets: inherit
+
+  appimage:
+    needs: version
+    uses: ./.github/workflows/desktop.yml
+    with:
+      version_name: ${{ needs.version.outputs.name }}
+
+  publish:
+    needs: [version, apk, appimage]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Nouveautés = message du tag
+        run: |
+          git fetch --force --tags origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          NOTES="$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")"
+          if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
+            NOTES="Corrections et améliorations."
+          fi
+          {
+            echo "NOTES<<PUNCH_EOF"
+            printf '%s\n' "$NOTES"
+            echo "PUNCH_EOF"
+          } >> "$GITHUB_ENV"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: openpunchclock-*
+          merge-multiple: true
+
+      - name: Renommer l'APK avec la version
+        run: mv openpunchclock-arm64.apk "openpunchclock-${GITHUB_REF_NAME}-arm64.apk"
+
+      - name: Publier la Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK="openpunchclock-${GITHUB_REF_NAME}-arm64.apk"
+          APPIMAGE="$(ls OpenPunchClock-*-x86_64.AppImage 2>/dev/null | head -1)"
+          [ -n "$APPIMAGE" ] || { echo "AppImage introuvable" >&2; exit 1; }
+
+          {
+            printf '%s\n\n' "$NOTES"
+            printf -- '---\n\n'
+            cat <<'EOF'
+          ## Installation
+
+          **PC / Linux (x86-64)** — `OpenPunchClock-*-x86_64.AppImage` :
+          `chmod +x OpenPunchClock-*.AppImage && ./OpenPunchClock-*.AppImage`
+
+          **Android (arm64)** — `openpunchclock-*-arm64.apk` : ouvrez-le sur le téléphone
+          (autorisez l'installation depuis cette source), ou `adb install -r openpunchclock-*-arm64.apk`.
+
+          Les mises à jour s'installent **par-dessus** sans perdre vos feuilles de temps ;
+          l'app propose la dernière version au démarrage (colo-apps).
+
+          ## Mises à jour auto (colo-apps)
+
+          Manifest : `https://colo-apps.les-crevettes-cevenoles.fr/releases/open-punch-clock-manifest.json`
+
+          Sur le serveur colo-apps : `sudo ./deploy/releases/install-all.sh` (cron */5 min).
+
+          ## Rappels
+
+          - **Sync** (optionnelle) — relais : `wss://colo-apps.les-crevettes-cevenoles.fr`
+          - **Hors ligne** — pointage et feuilles de temps locaux ; sync au retour réseau
+          EOF
+          } > notes.md
+
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$APK" "$APPIMAGE" \
+              --repo "$GITHUB_REPOSITORY" --clobber
+            exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" "$APK" "$APPIMAGE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Open Punch Clock $GITHUB_REF_NAME" \
+            --notes-file notes.md

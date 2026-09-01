@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# Télécharge la dernière release GitHub Open_punch_clock et publie
+# open-punch-clock-manifest.json + APK/AppImage sur colo-apps.
+# Les clients interrogent colo-apps (pas GitHub directement).
+#
+# Cron (serveur, toutes les 5 min) :
+#   */5 * * * * root PUNCH_RELEASES_DIR=/var/lib/colo-apps/releases \
+#     /opt/colo-apps/sync-openpunch-from-github.sh >>/var/log/colo-apps-openpunch-releases.log 2>&1
+#
+# Variables :
+#   PUNCH_RELEASES_DIR        — répertoire servi par nginx (/releases/)
+#   PUNCH_RELEASES_PUBLIC_URL — base publique (défaut colo-apps)
+#   PUNCH_GITHUB_REPO         — défaut Poisson48/Open_punch_clock
+#   PUNCH_MANIFEST_NAME       — défaut open-punch-clock-manifest.json
+set -euo pipefail
+
+REPO="${PUNCH_GITHUB_REPO:-Poisson48/Open_punch_clock}"
+DEST="${PUNCH_RELEASES_DIR:-/var/lib/colo-apps/releases}"
+MANIFEST_NAME="${PUNCH_MANIFEST_NAME:-open-punch-clock-manifest.json}"
+API="https://api.github.com/repos/${REPO}/releases?per_page=30"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+mkdir -p "$DEST"
+
+log() { printf '[%s] %s\n' "$(date -Iseconds)" "$*"; }
+
+curl -fsSL -H 'Accept: application/vnd.github+json' -H 'User-Agent: OpenPunchClock-Releases' \
+  "$API" -o "$TMP/releases.json"
+
+RELEASE_JSON="$(
+  python3 - "$TMP/releases.json" "$TMP/release_meta.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    releases = json.load(f)
+for r in releases:
+    if r.get("draft") or r.get("prerelease"):
+        continue
+    tag = (r.get("tag_name") or "").lstrip("vV")
+    if not tag:
+        continue
+    with open(sys.argv[2], "w", encoding="utf-8") as f:
+        json.dump(r, f, ensure_ascii=False)
+    print(tag)
+    break
+else:
+    sys.exit(1)
+PY
+)" || { log "Aucune release stable trouvée sur GitHub ($REPO)"; exit 0; }
+
+VERSION="$RELEASE_JSON"
+log "Dernière release GitHub : $VERSION"
+
+MANIFEST="$DEST/$MANIFEST_NAME"
+CURRENT=""
+if [[ -f "$MANIFEST" ]]; then
+  CURRENT="$(python3 -c "import json; print(json.load(open('$MANIFEST')).get('version',''))" 2>/dev/null || true)"
+fi
+
+if [[ "$CURRENT" == "$VERSION" ]]; then
+  log "Déjà à jour ($VERSION)"
+  exit 0
+fi
+
+log "Mise à jour $CURRENT → $VERSION"
+
+python3 - "$TMP/release_meta.json" "$DEST" "$VERSION" "$MANIFEST_NAME" "$REPO" <<'PY'
+import json, os, sys, urllib.request
+
+meta_path, dest, version, manifest_name, repo = sys.argv[1:6]
+with open(meta_path, encoding="utf-8") as f:
+    rel = json.load(f)
+
+def notes_from_body(body: str) -> str:
+    kept = []
+    for line in (body or "").split("\n"):
+        if line.strip() == "---":
+            break
+        s = line.strip()
+        while s.startswith("#"):
+            s = s[1:].strip()
+        kept.append(s)
+    while kept and not kept[-1]:
+        kept.pop()
+    return "\n".join(kept).strip()
+
+tag = rel.get("tag_name", "")
+published = rel.get("published_at", "")
+notes = notes_from_body(rel.get("body", ""))
+html_url = rel.get("html_url", "")
+
+apk_name = appimage_name = ""
+apk_url = appimage_url = ""
+for asset in rel.get("assets", []):
+    name = asset.get("name", "")
+    url = asset.get("browser_download_url", "")
+    nl = name.lower()
+    if nl.endswith(".apk") and "openpunchclock" in nl:
+        apk_name, apk_url = name, url
+    elif nl.endswith(".appimage") and "openpunchclock" in nl:
+        appimage_name, appimage_url = name, url
+
+def download(url: str, path: str) -> None:
+    req = urllib.request.Request(url, headers={"User-Agent": "OpenPunchClock-Releases"})
+    with urllib.request.urlopen(req, timeout=600) as resp, open(path, "wb") as out:
+        out.write(resp.read())
+
+base = os.environ.get("PUNCH_RELEASES_PUBLIC_URL",
+                       "https://colo-apps.les-crevettes-cevenoles.fr/releases")
+
+if apk_url and apk_name:
+    local_apk = os.path.join(dest, apk_name)
+    print(f"Téléchargement APK {apk_name}…", flush=True)
+    download(apk_url, local_apk)
+    apk_public = f"{base.rstrip('/')}/{apk_name}"
+else:
+    apk_public = ""
+
+if appimage_url and appimage_name:
+    local_img = os.path.join(dest, appimage_name)
+    print(f"Téléchargement AppImage {appimage_name}…", flush=True)
+    download(appimage_url, local_img)
+    os.chmod(local_img, 0o755)
+    appimage_public = f"{base.rstrip('/')}/{appimage_name}"
+else:
+    appimage_public = ""
+
+api = f"https://api.github.com/repos/{repo}/releases?per_page=30"
+req = urllib.request.Request(api, headers={
+    "Accept": "application/vnd.github+json",
+    "User-Agent": "OpenPunchClock-Releases",
+})
+with urllib.request.urlopen(req, timeout=60) as resp:
+    all_releases = json.load(resp)
+
+changelog = []
+for r in all_releases:
+    if r.get("draft") or r.get("prerelease"):
+        continue
+    ver = (r.get("tag_name") or "").lstrip("vV")
+    if not ver:
+        continue
+    changelog.append({
+        "version": ver,
+        "notes": notes_from_body(r.get("body", "")),
+        "publishedAt": r.get("published_at", ""),
+    })
+
+manifest = {
+    "version": version,
+    "publishedAt": published,
+    "notes": notes,
+    "apkUrl": apk_public,
+    "appImageUrl": appimage_public,
+    "releaseUrl": html_url,
+    "changelog": changelog,
+}
+
+tmp_manifest = os.path.join(dest, manifest_name + ".tmp")
+with open(tmp_manifest, "w", encoding="utf-8") as f:
+    json.dump(manifest, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+os.replace(tmp_manifest, os.path.join(dest, manifest_name))
+
+# Ne supprimer que les anciens artefacts Open Punch Clock (pas Colo Course).
+keep = {manifest_name, "manifest.json", "recipe_library.json", "recipes-manifest.json",
+        apk_name, appimage_name}
+for name in os.listdir(dest):
+    if name in keep or not os.path.isfile(os.path.join(dest, name)):
+        continue
+    nl = name.lower()
+    is_punch = (
+        nl.startswith("openpunchclock")
+        or name.startswith("OpenPunchClock-")
+    )
+    if is_punch:
+        os.remove(os.path.join(dest, name))
+        print(f"Supprimé ancien artefact : {name}", flush=True)
+
+print(f"Manifest publié : {version} → {manifest_name}", flush=True)
+PY
+
+log "OK — $MANIFEST_NAME $VERSION publié dans $DEST"
