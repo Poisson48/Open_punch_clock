@@ -60,7 +60,7 @@ void Permissions::requestCamera()
 void Permissions::requestLocation()
 {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    const QLocationPermission permission;
+    QLocationPermission permission;
     permission.setAccuracy(QLocationPermission::Precise);
 
     switch (qApp->checkPermission(permission)) {

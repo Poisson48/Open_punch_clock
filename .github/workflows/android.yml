@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/Qt
-          key: qt-${{ env.QT_VER }}-linux-android-arm64-mm
+          key: qt-${{ env.QT_VER }}-linux-android-arm64-pos
 
       - name: Qt ${{ env.QT_VER }} (hôte + android_arm64_v8a)
         if: steps.cache-qt.outputs.cache-hit != 'true'
